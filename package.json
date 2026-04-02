@@ -1,0 +1,27 @@
+{
+  "name": "jobweb",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "description": "",
+  "directories": {
+    "lib": "lib"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/limayur8166-dotcom/Jobweb.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/limayur8166-dotcom/Jobweb/issues"
+  },
+  "homepage": "https://github.com/limayur8166-dotcom/Jobweb#readme",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
