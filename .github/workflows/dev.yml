@@ -1,0 +1,65 @@
+name: Copy Folder and Restart PM2
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Copy folder to deployment directory
+        run: |
+          SOURCE="."
+          DEST="/var/www/html/backend/"
+
+          echo "Copying from $SOURCE to $DEST"
+
+          if [ -d "$DEST" ]; then
+            echo "Cleaning destination folder, preserving node_modules..."
+            find "$DEST" -mindepth 1 -maxdepth 1 ! -name 'node_modules' -exec rm -rf {} +
+          fi
+
+          cp -r "$SOURCE" "$DEST"
+          echo "✅ Folder copied successfully."
+
+      - name: Restart PM2 process
+        run: |
+          APP_NAME="index"
+          echo "Restarting PM2 process: $APP_NAME"
+          pm2 restart "$APP_NAME"
+
+      - name: Send Email
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+
+          subject: >
+            ${{ job.status == 'success' && '✅ SUCCESS' || '❌ FAILED' }} - GitHub Deployment
+
+          body: |
+            Hello,
+
+            Your GitHub workflow has completed.
+
+            🔹 Status     : ${{ job.status }}
+            🔹 Repository : ${{ github.repository }}
+            🔹 Branch     : ${{ github.ref_name }}
+            🔹 Commit     : ${{ github.sha }}
+            🔹 Pushed by  : ${{ github.actor }}
+
+            ${{ job.status == 'success' && 'Deployment completed successfully.' || 'Deployment failed. Please check logs.' }}
+
+          to: limayur8166@gmail.com
+          from: Sync-Drawing
