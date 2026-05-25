@@ -2,9 +2,10 @@ name: Copy Folder and Restart PM2
 
 on:
   workflow_dispatch:
+
   push:
     branches:
-      - master
+      - main
 
 jobs:
   deploy:
@@ -14,34 +15,50 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Copy folder to deployment directory
+      - name: Deploy Application
         run: |
           SOURCE="."
-          DEST="/var/www/html/backend/"
+          DEST="/var/www/html/backend"
 
-          echo "Copying from $SOURCE to $DEST"
+          echo "Deploying project to $DEST"
 
-          if [ -d "$DEST" ]; then
-            echo "Cleaning destination folder, preserving node_modules..."
-            find "$DEST" -mindepth 1 -maxdepth 1 ! -name 'node_modules' -exec rm -rf {} +
-          fi
+          # Create destination if not exists
+          mkdir -p "$DEST"
 
-          cp -r "$SOURCE" "$DEST"
-          echo "✅ Folder copied successfully."
+          # Clean destination except node_modules
+          echo "Cleaning old files..."
+          find "$DEST" -mindepth 1 -maxdepth 1 ! -name 'node_modules' -exec rm -rf {} +
 
-      - name: Restart PM2 process
+          # Copy all files including hidden files
+          echo "Copying files..."
+          rsync -av --exclude=node_modules --exclude=.git "$SOURCE"/ "$DEST"/
+
+          echo "✅ Deployment completed"
+
+      - name: Install Dependencies
+        run: |
+          cd /var/www/html/backend
+          npm install
+
+      - name: Restart PM2
         run: |
           APP_NAME="index"
+
           echo "Restarting PM2 process: $APP_NAME"
-          pm2 restart "$APP_NAME"
+
+          pm2 restart "$APP_NAME" || pm2 start index.js --name "$APP_NAME"
+
+          pm2 save
 
       - name: Send Email
         if: always()
         uses: dawidd6/action-send-mail@v3
+
         with:
           server_address: smtp.gmail.com
           server_port: 465
           secure: true
+
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
 
@@ -51,7 +68,7 @@ jobs:
           body: |
             Hello,
 
-            Your GitHub workflow has completed.
+            Your GitHub deployment workflow has completed.
 
             🔹 Status     : ${{ job.status }}
             🔹 Repository : ${{ github.repository }}
@@ -59,7 +76,7 @@ jobs:
             🔹 Commit     : ${{ github.sha }}
             🔹 Pushed by  : ${{ github.actor }}
 
-            ${{ job.status == 'success' && 'Deployment completed successfully.' || 'Deployment failed. Please check logs.' }}
+            ${{ job.status == 'success' && 'Deployment completed successfully.' || 'Deployment failed. Please check workflow logs.' }}
 
           to: limayur8166@gmail.com
           from: Sync-Drawing
